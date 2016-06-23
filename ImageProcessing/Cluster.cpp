@@ -3,6 +3,8 @@
 
 Cluster::Cluster(void)
 {
+//	siftDescriptors.create(Size(128, 1), CV_16UC1);
+
 }
 
 
@@ -12,7 +14,7 @@ Cluster::~Cluster(void)
 
 
 
-Vec<uchar,128> Cluster::getClusterCenterDescriptor(){
+Mat Cluster::getClusterCenterDescriptor(){
 	return centerDescriptor;
 }
 Point Cluster::getClusterCenterPoint() {
@@ -27,16 +29,16 @@ vector<KeyPoint> Cluster::getClusterKeyPoints(){
 	return keyPoints;
 }
 
-void Cluster::addToCluster(KeyPoint key,Vec<uchar,128> descriptor){
+void Cluster::addToCluster(KeyPoint key,Mat descriptor){
 	keyPoints.push_back(key);
 	siftDescriptors.push_back(descriptor);
 
 }
 
 void Cluster::calculateCenter(){
-		if (siftDescriptors.rows < 2) {
-		centerDescriptor= siftDescriptors;
-		centerPoint = keyPoints.front;
+		if (siftDescriptors.rows == 1 ){
+		centerDescriptor= siftDescriptors.row(0);
+		centerPoint = keyPoints.front().pt;
 		return;
 	}
 	reduce(siftDescriptors, centerDescriptor, 0,CV_REDUCE_AVG, -1);
@@ -47,23 +49,28 @@ void Cluster::calculateCenter(){
 		x += key.pt.x;
 		y += key.pt.y;
 	}
-	x = x / keyPoints.size;
-	y = y / keyPoints.size;
+	x = x / keyPoints.size();
+	y = y / keyPoints.size();
 	centerPoint.x = x;
 	centerPoint.y = y;
 
 
 }
 
-void Cluster::addCluster(Cluster other)
+void Cluster::addCluster(Cluster * other)
 {
-	for (int i = 0; i < other.getClusterKeyPoints().size();i++) {
-		addToCluster(other.getClusterKeyPoints().at(i), other.getSiftDescriptors().at(i));
+	for (int i = 0; i < other->getClusterKeyPoints().size();i++) {
+		addToCluster(other->getClusterKeyPoints().at(i), other->getSiftDescriptors().row(i));
 	}
 	calculateCenter();
 }
 
-void Cluster::addToClusterAndCalc(KeyPoint key,Vec<uchar,128> descriptor){
+void Cluster::addNeighbour(Cluster * other)
+{
+	neighbours.push_back(other);
+}
+
+void Cluster::addToClusterAndCalc(KeyPoint key,Mat descriptor){
 	addToCluster(key,descriptor);
 	calculateCenter();
 }

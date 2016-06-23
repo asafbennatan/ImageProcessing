@@ -5,19 +5,18 @@
 #include <vector>
 #include <cmath>
 #include "Cluster.h"
+#include "Start.h"
 #include <unordered_set>
 
 using namespace std;
 using namespace cv;
-vector<uchar> getIdentificationVector(Mat image, int gridWidth, int gridHeight);
-Vec<uchar, 128> calculateGrid(Mat cell);
-double compare(vector<uchar> a, vector<uchar> b);
+
 
 int main(int argc, char** argv) {
 
 
-	Mat img_1 = imread("C:\\Users\\Ilana\\Desktop\\Rashi.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-	Mat img_2 = imread("C:\\Users\\Ilana\\Desktop\\smalll.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat page = imread("C:\\Users\\Asaf\\Desktop\\Gezer5.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat word = imread("C:\\Users\\Asaf\\Desktop\\Gezer5.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 	int gridW = 9;
 	int gridH = 9;
 
@@ -28,18 +27,18 @@ int main(int argc, char** argv) {
 	Mat descriptors_2;
 
 
-	sft->detect(img_1, keypoints_1);
-	sft->detect(img_2, keypoints_2);
-	sft->compute(img_1, keypoints_1, descriptors_1);
-	sft->compute(img_2, keypoints_2, descriptors_2);
+	sft->detect(page, keypoints_1);
+	sft->detect(word, keypoints_2);
+	sft->compute(page, keypoints_1, descriptors_1);
+	sft->compute(word, keypoints_2, descriptors_2);
 
 	Mat out0;
-	drawKeypoints(img_1, keypoints_1/* temp*/, out0);
+	drawKeypoints(page, keypoints_1/* temp*/, out0);
 	imshow("KeyPoint0.jpg", out0);
 	imwrite("KeyPoint0.jpg", out0);
 
 	Mat out1;
-	drawKeypoints(img_2, keypoints_2/* temp*/, out1);
+	drawKeypoints(word, keypoints_2/* temp*/, out1);
 	imshow("KeyPoint1.jpg", out1);
 	imwrite("KeyPoint1.jpg", out1);
 
@@ -55,81 +54,146 @@ int main(int argc, char** argv) {
 	//cout << descriptors_1.rowRange(0,1) << endl;
 	//cout << descriptors_1.rowRange(150,171) << endl;
 	//
-	waitKey();
+	//waitKey();
+	double inf = std::numeric_limits<double>::infinity();
 
-	vector<uchar> id1 = getIdentificationVector(img_1, gridW, gridH);
-	vector<uchar> id2 = getIdentificationVector(img_2, gridW, gridH);
-	double res = compare(id1, id2);
-	cout << "dis is " << res << endl;
-	waitKey();
+	double distance = inf;
+	double threshold = inf;
+	vector<Cluster *> clusters1=buildClusters(page, distance);
+	vector<Cluster *> clusters2 = buildClusters(word, distance);
+	vector<Cluster *> found;
+	for each (Cluster * cluster in clusters2)
+	{
+		vector<Cluster *> similars = findSimilars(clusters1,cluster, threshold);
+		if (similars.size() > 0) {
+			found = similars;
+			break;
+		}
+
+
+	}
+	Mat out2;
+	for each (Cluster * c in found)
+	{
+		
+		drawKeypoints(page,c->getClusterKeyPoints(), out2);
+		
+		
+
+	}
+	imwrite("KeyPoint2.jpg", out2);
+	imshow("KeyPoint2.jpg", out2);
+	
 
 
 
 }
 
+vector<Cluster * > findSimilars(vector<Cluster *> clusters, Cluster * c,double threshold) {
+	vector<Cluster *> similars;
+	for each (Cluster * c1 in clusters) {
+		if (compare(c1->getClusterCenterDescriptor(), c->getClusterCenterDescriptor()) < threshold) {
+			similars.push_back(c1);
+		}
+	}
+	return similars;
+}
 
-vector<Cluster> buildClusters(Mat img,double distance) {
+bool match(Cluster * a, Cluster * b) {
+	return true;
+}
+
+
+vector<Cluster *> buildClusters(Mat img, double distance) {
 	Ptr<Feature2D> sft = xfeatures2d::SIFT::create();
 	vector<KeyPoint> keypoints;
 	Mat descriptors;
 	sft->detect(img, keypoints);
 	sft->compute(img, keypoints, descriptors);
-	vector<Cluster> clusters = initClusters(keypoints, descriptors);
-	clusters = joinClustersFixedPoint(clusters,distance);
+	vector<Cluster *> clusters = initClusters(keypoints, descriptors);
+	clusters = joinClustersFixedPoint(clusters, distance);
 	return clusters;
 
 }
 
 
-vector<Cluster> joinClustersFixedPoint(vector<Cluster> clusters,double distance) {
+vector<Cluster *> joinClustersFixedPoint(vector<Cluster *> clusters, double distance) {
 
-	vector<Cluster> out=joinClusters(clusters,distance);
+	vector<Cluster *> out = joinClusters(clusters, distance);
 	if (out.size() == clusters.size()) {
 		return out;
 	}
 
-	joinClustersFixedPoint(out,distance);
+	joinClustersFixedPoint(out, distance);
 
 }
 
 
-vector<Cluster> joinClusters(vector<Cluster> clusters,double distance) {
+vector<Cluster *> joinClusters(vector<Cluster *> clusters, double distance) {
 	unordered_set<int> joinedIndexs;
-	for (int i = 0; i < clusters.size(); i++) {
-		if (joinedIndexs.find(i) == joinedIndexs.end()) {
+	vector<Cluster *> out;
+	for (unsigned int i = 0; i < clusters.size(); i++) {
+		if (joinedIndexs.find(i) != joinedIndexs.end()) {
 			continue;
 		}
-		for (int j = i+1; j < clusters.size(); j++) {
-			if (joinedIndexs.find(j) == joinedIndexs.end()) {
+		for (int j = i + 1; j < clusters.size(); j++) {
+			if (joinedIndexs.find(j) != joinedIndexs.end()) {
 				continue;
 			}
-			Cluster a = clusters.at(i);
-			Cluster b = clusters.at(j);
-			Point ap = a.getClusterCenterPoint();
-			Point bp = a.getClusterCenterPoint();
-			if (euclideanDist(ap, bp) <= distance) {
-				a.addCluster(b);
+			Cluster *a = clusters.at(i);
+			Cluster *b = clusters.at(j);
+			Point ap = a->getClusterCenterPoint();
+			Point bp = a->getClusterCenterPoint();
+			if (euclideanDist(ap, bp) <= distance&& sameDirection(a->getClusterCenterDescriptor(),b->getClusterCenterDescriptor())) {
+				a->addCluster(b);
+				out.push_back(a);
 				joinedIndexs.insert(j);
 			}
-			
+
 		}
-	}
 	
 
-	
+	}
+	return out;
+}
+
+bool sameDirection(Vec<uchar, 128> v1, Vec<uchar, 128> v2) {
+	int i = calculateDirection(v1);
+	int j = calculateDirection(v2);
+	return i == j;
+}
+
+
+int calculateDirection(Vec<uchar, 128> v) {
+	uchar dirSum[8];
+	for (int i = 0; i <128; i++) {
+		int entry = i % 8;
+		dirSum[entry] += v[i];
+	}
+	int max = 0;
+	for (int i = 1; i < 8; i++) {
+		if (dirSum[i] > dirSum[max]) {
+			max = i;
+		}
+	}
+	return max;
 }
 
 
 double euclideanDist(Point& p, Point& q) {
 	Point diff = p - q;
-	return cv::sqrt(diff.x*diff.x + diff.y*diff.y);
+	return cv::sqrt((double)(diff.x*diff.x) + (double)(diff.y*diff.y));
 }
 
-vector<Cluster> initClusters(vector<KeyPoint> keypoints, Mat descriptors) {
-	vector<Cluster> clusters;
-	for (int i = 0; i<keypoints.size(); i++) {
-		Cluster c;
-		c.addToClusterAndCalc(keypoints.at(i), descriptors.row(i));
+vector<Cluster *> initClusters(vector<KeyPoint> keypoints, Mat descriptors) {
+	vector<Cluster *> clusters;
+	for (unsigned int i = 0; i<keypoints.size(); i++) {
+		Cluster *c = new Cluster();
+		Vec<uchar, 128> v;
+		Mat t = descriptors.row(i);
+		//transpose(t, v);
+		c->addToClusterAndCalc(keypoints.at(i),t);
+		clusters.push_back(c);
 
 	}
 	return clusters;
@@ -154,10 +218,10 @@ vector<uchar> getIdentificationVector(Mat image, int gridWidth, int gridHeight) 
 
 
 
-	for (int k = 0; k < keypoints_1.size(); k++) {
+	for (unsigned int k = 0; k < keypoints_1.size(); k++) {
 		KeyPoint key = keypoints_1.at(k);
-		int i = floor(key.pt.x) / cellWidth;
-		int j = floor(key.pt.y) / cellHeight;
+		int i = (int)(floor(key.pt.x) / cellWidth);
+		int j = (int)(floor(key.pt.y) / cellHeight);
 		Point p(i, j);
 		cout << "point " << i << "," << j << endl;
 
@@ -199,11 +263,11 @@ Vec<uchar, 128> calculateGrid(Mat cell) {
 
 }
 
-double compare(vector<uchar> a, vector<uchar> b) {
+double compare(Vec<uchar,128> a, Vec<uchar,128> b) {
 	double sum = 0;
-	for (int i = 0; i < a.size(); i++) {
-		double v1 = a.at(i);
-		double v2 = b.at(i);
+	for (unsigned int i = 0; i < 128; i++) {
+		double v1 = a[i];
+		double v2 = b[i];
 		if (v1 != 0 && v2 != 0) {
 			sum += (pow((v1 - v2), 2.0) / (v1 + v2));
 

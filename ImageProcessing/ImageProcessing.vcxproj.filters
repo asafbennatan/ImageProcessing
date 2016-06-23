@@ -26,5 +26,8 @@
     <ClInclude Include="Cluster.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Start.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

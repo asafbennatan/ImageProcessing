@@ -11,20 +11,22 @@ public:
 	Cluster(void);
 	~Cluster(void);
 
-	Vec<uchar,128> getClusterCenterDescriptor();
+	Mat getClusterCenterDescriptor();
 	Point getClusterCenterPoint();
 	Mat getSiftDescriptors();
 	vector<KeyPoint> getClusterKeyPoints();
-	void addToCluster(KeyPoint key,Vec<uchar,128> descriptor);
-	void addToClusterAndCalc(KeyPoint key,Vec<uchar,128> descriptor);
+	void addToCluster(KeyPoint key,Mat descriptor);
+	void addToClusterAndCalc(KeyPoint key,Mat descriptor);
 	void calculateCenter();
-	void addCluster(Cluster other);
+	void addCluster(Cluster *other);
+	void addNeighbour(Cluster *other);
 
 
 private:
 	vector<KeyPoint> keyPoints;
 	Mat siftDescriptors;
-	Vec<uchar,128> centerDescriptor; 
+	Mat centerDescriptor; 
 	Point centerPoint;
+	vector<Cluster *> neighbours;
 };
 
