@@ -3,6 +3,8 @@
 #include "opencv2/xfeatures2d/nonfree.hpp"
 #include <opencv2/highgui/highgui.hpp>
 #include <vector>
+#include <iostream>
+
 using namespace std;
 using namespace cv;
 class Cluster
@@ -12,21 +14,22 @@ public:
 	~Cluster(void);
 
 	Mat getClusterCenterDescriptor();
-	Point getClusterCenterPoint();
+	Point2f getClusterCenterPoint();
 	Mat getSiftDescriptors();
 	vector<KeyPoint> getClusterKeyPoints();
 	void addToCluster(KeyPoint key,Mat descriptor);
 	void addToClusterAndCalc(KeyPoint key,Mat descriptor);
 	void calculateCenter();
-	void addCluster(Cluster *other);
-	void addNeighbour(Cluster *other);
+	void mergeClusters(Cluster *other);
+	void setNeighbours(Cluster *n1,Cluster * n2);
+	pair<Cluster *,Cluster *> getNeighbours();
+	void printClusterData();
 
 
 private:
 	vector<KeyPoint> keyPoints;
 	Mat siftDescriptors;
 	Mat centerDescriptor; 
-	Point centerPoint;
-	vector<Cluster *> neighbours;
+	Point2f centerPoint;
+	pair<Cluster *,Cluster *> neighbours;
 };
-
