@@ -22,7 +22,7 @@ double joinClusters(vector<Cluster *>& clusters);
 vector<Cluster *> joinClustersFixedPoint(vector<Cluster *>& clusters, double distance);
 void initClusters(vector<KeyPoint> keypoints, Mat descriptors, vector<Cluster*>& clusters);
 bool sameDirection(Vec<uchar, 128> v1, Vec<uchar, 128> v2);
-int calculateDirection(Vec<uchar, 128> v);
+double * calculateDirection(Vec<uchar, 128> v);
 void findSimilars(vector<Cluster *> clusters, Cluster * c,vector<Cluster*>& similars, double threshold);
 vector<Cluster *> buildClusters(Mat img, double distance);
 double getMinimalDistanceBetweenTriplets(Cluster * origin, Cluster * other);

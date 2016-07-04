@@ -266,25 +266,34 @@ vector<Cluster *> joinClusters(vector<Cluster *>& clusters, double distance) {
 }
 
 bool sameDirection(Vec<uchar, 128> v1, Vec<uchar, 128> v2) {
-	int i = calculateDirection(v1);
-	int j = calculateDirection(v2);
-	return i == j;
+	double * i = calculateDirection(v1);
+	double * j = calculateDirection(v2);
+	double d=cosine_similarity(i, j, 8);
 }
 
 
-int calculateDirection(Vec<uchar, 128> v) {
-	uchar dirSum[8];
+double* calculateDirection(Vec<uchar, 128> v) {
+	double *dirSum= new double[8];
 	for (int i = 0; i <128; i++) {
 		int entry = i % 8;
 		dirSum[entry] += v[i];
 	}
 	int max = 0;
 	for (int i = 1; i < 8; i++) {
-		if (dirSum[i] > dirSum[max]) {
-			max = i;
-		}
+		dirSum[i] = dirSum[i] / 16;
 	}
-	return max;
+	return dirSum;
+}
+
+double cosine_similarity(double *A, double *B, unsigned int Vector_Length)
+{
+	double dot = 0.0, denom_a = 0.0, denom_b = 0.0;
+	for (unsigned int i = 0u; i < Vector_Length; ++i) {
+		dot += A[i] * B[i];
+		denom_a += A[i] * A[i];
+		denom_b += B[i] * B[i];
+	}
+	return dot / (sqrt(denom_a) * sqrt(denom_b));
 }
 
 
