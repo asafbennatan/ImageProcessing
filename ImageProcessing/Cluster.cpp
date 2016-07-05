@@ -61,23 +61,39 @@ void Cluster::calculateCenter(){
 
 void Cluster::mergeClusters(Cluster * other)
 {
+	//add other's keypoints to this cluster
 	for (unsigned int i = 0; i < other->keyPoints.size(); i++) {
 		addToCluster(other->keyPoints.at(i), other->siftDescriptors.row(i));
 	}
+
+	//merge neighbours excluding this
+	for each (Cluster *n in other->getNeighbours)
+	{
+		if (n != this) {
+			addNeighbour(n);
+		}
+	}
+	//if other was our neighbour erase it from the neighbours set
+	getNeighbours().erase(other);
 	calculateCenter();
 	//cout << "after mergeClusters" << endl;
 	printClusterData();
 }
 
-void Cluster::setNeighbours(Cluster * n1, Cluster * n2)
+void Cluster::addNeighbour(Cluster * n1)
 {
-	neighbours = make_pair(n1, n2);
+	neighbours.insert(n1);
 }
 
-pair<Cluster*, Cluster*> Cluster::getNeighbours()
-{
-	return neighbours;
-}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -88,9 +104,13 @@ void Cluster::addToClusterAndCalc(KeyPoint key,Mat descriptor){
 	printClusterData();
 }
 
+unordered_set<Cluster*> Cluster::getNeighbours()
+{
+	return unordered_set<Cluster*>();
+}
+
 void Cluster::printClusterData()
 {
 	//cout << "number of points: " << keyPoints.size() << endl;
 	//cout << "center: "  << centerPoint.x << "  "  << centerPoint.y << endl;
 }
-

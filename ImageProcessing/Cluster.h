@@ -1,9 +1,11 @@
 #pragma once
- #include "opencv2/features2d.hpp"
+#include "opencv2/features2d.hpp"
 #include "opencv2/xfeatures2d/nonfree.hpp"
 #include <opencv2/highgui/highgui.hpp>
 #include <vector>
 #include <iostream>
+#include <unordered_set>
+
 
 using namespace std;
 using namespace cv;
@@ -21,9 +23,10 @@ public:
 	void addToClusterAndCalc(KeyPoint key,Mat descriptor);
 	void calculateCenter();
 	void mergeClusters(Cluster *other);
-	void setNeighbours(Cluster *n1,Cluster * n2);
-	pair<Cluster *,Cluster *> getNeighbours();
+	void addNeighbour(Cluster *n1);
+	unordered_set<Cluster *> getNeighbours();
 	void printClusterData();
+
 
 
 private:
@@ -31,5 +34,6 @@ private:
 	Mat siftDescriptors;
 	Mat centerDescriptor; 
 	Point2f centerPoint;
-	pair<Cluster *,Cluster *> neighbours;
+	unordered_set<Cluster *> neighbours;
+	
 };
