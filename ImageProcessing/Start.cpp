@@ -1,4 +1,3 @@
-
 #include "Start.h"
 #include "opencv2/imgproc/imgproc.hpp"
 
@@ -12,9 +11,9 @@ using namespace cv;
 #define INF numeric_limits<double>::infinity()
 #define INFINT numeric_limits<double>::infinity()
 #define EPSILON 0.0000000000000000000001f
-#define DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD 10d
+#define DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD 10.0//d
 int const comb[6][3] = { { 0,1,2 },{ 0,2,1 },{ 1,2,0 },{ 1,0,2 },{ 2,1,0 },{ 2,0,1 } };
-float dirs [8] = {0,45,90,135,180,225,270,315};
+double dirs[1][8] = { {0,45,90,135,180,225,270,315} };
 
 
 
@@ -22,32 +21,30 @@ float dirs [8] = {0,45,90,135,180,225,270,315};
 int main(int argc, char** argv) {
 
 
-	Mat page = imread("C:\\Users\\Ilana\\Desktop\\Rashi.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-	Mat word = imread("C:\\Users\\Ilana\\Desktop\\bigl.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat page = imread("C:\\Users\\Asaf\\Desktop\\Gezer5.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat word = imread("C:\\Users\\Asaf\\Desktop\\Capture.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 	double inf = std::numeric_limits<double>::infinity();
 	//int numberOfwantedClustersAtQuery = 5;
 
-	pair<double,unordered_set<Cluster *> > p = buildClusters(word);
+	pair<double,unordered_set<Cluster *> > p = buildClusters(word,DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD);
 	unordered_set<Cluster *> clusters2 = p.second;
 	p= buildClusters(page, p.first);
 	unordered_set<Cluster *> clusters1 = p.second;
 	
-	vector<Cluster *> similars;
-	findSimilars(clusters1, clusters2.at(0), similars, MAX_TRESHOLD);
+	//vector<Cluster *> similars;
+	//findSimilars(clusters1, clusters2.at(0), similars, MAX_TRESHOLD);
 
 	
-
+/*
 	Mat out2;
 	vector<Point2f> k1;
 	for each (Cluster * c in similars)
 	{
-		
 			k1.push_back(c->getClusterCenterPoint());
 			k1.push_back(c->getNeighbours().first->getClusterCenterPoint());
 			k1.push_back(c->getNeighbours().second->getClusterCenterPoint());
-
-
 	}
+
 	vector<KeyPoint> converted;
 	KeyPoint::convert(k1, converted);
 
@@ -68,7 +65,7 @@ int main(int argc, char** argv) {
 	imshow("word.jpg", out3);
 
 	
-
+	*/
 	
 	waitKey();
 	
@@ -78,22 +75,44 @@ int main(int argc, char** argv) {
 }
 
 void calculateTrigularityList(unordered_set<Cluster *> clusters, Size imgSize ){
+	
+
 	Rect rect(0, 0, imgSize.width, imgSize.height);
 	Subdiv2D subdiv(rect);
+	
 	for each (Cluster * p in clusters)
 	{
 		subdiv.insert(p->getClusterCenterPoint());
 	}
+	
+
 	vector<Vec6f> trianglesList;
 	subdiv.getTriangleList(trianglesList);
+	Cluster *aC;
+	Cluster *bC;
+	Cluster *cC;
+	
 	for each (Vec6f t in trianglesList)
 	{
-		Point2f a(t[0], t[1]);
-		Point2f b(t[2], t[3]);
-		Point2f c(t[4], t[5]);
-		Cluster *aC=findCluster(a, clusters);
-		Cluster *bC = findCluster(b, clusters);
-		Cluster *cC = findCluster(c, clusters);
+		Point2f pts [3];
+		bool findInClusters=true;
+		pts[0] = Point2f(t[0], t[1]);
+		pts[1] = Point2f(t[2], t[3]);
+		pts[2] = Point2f(t[4], t[5]);
+		
+		for(int i=0; i<3 ;i++){
+         if(pts[i].x>=imgSize.width ||pts[i].y >= imgSize.height || pts[i].x <= 0||pts[i].y <= 0)
+		 {
+            findInClusters=false;
+			break;
+		 }
+      }
+
+		if (findInClusters)
+		{
+		aC = findCluster(pts[0], clusters);
+		bC = findCluster(pts[1], clusters);
+		cC = findCluster(pts[2], clusters);
 		
 		aC->addNeighbour(bC);
 		aC->addNeighbour(cC);
@@ -101,6 +120,7 @@ void calculateTrigularityList(unordered_set<Cluster *> clusters, Size imgSize ){
 		bC->addNeighbour(cC);
 		cC->addNeighbour(aC);
 		cC->addNeighbour(bC);
+		}
 
 	}
 }
@@ -121,42 +141,23 @@ Cluster *findCluster(Point2f p, unordered_set<Cluster*> clusters) {
 
 
 bool compareFloats(float a, float b) {
-	
 	return ((a - b < EPSILON )&& (b - a < EPSILON));
 }
 
 
-double getMinimalDistanceBetweenTriplets(Cluster * origin, Cluster * other) {
-	vector<Cluster *> one;
-	vector<Cluster * > two;
-	one.push_back(origin);
-	one.push_back(origin->getNeighbours().first);
-	one.push_back(origin->getNeighbours().second);
-	two.push_back(other);
-	two.push_back(other->getNeighbours().first);
-	two.push_back(other->getNeighbours().second);
-	double min= numeric_limits<double>::infinity();
-	for (int i = 0; i < 6; i++) {
-		double sum = 0;
-		for (int j = 0; j < 3; j++) {
-			sum=sum+compareHist(one.at(j)->getClusterCenterDescriptor(), two.at(comb[i][j])->getClusterCenterDescriptor(), HISTCMP_CHISQR);
-		}
-		if (sum < min) {
-			min = sum;
-		}
-		
-	}
-	return min;
+
+
+
+
+void findSimilars(unordered_set<Cluster *>, Cluster * c, unordered_set<Cluster *>& similars, double threshold) {
+
 }
-
-
-
 
 
 void findSimilars(vector<Cluster *> clusters, Cluster * c,vector<Cluster*>& similars, double threshold) {
 	double min = INF;
 	for each (Cluster * c1 in clusters) {
-		double dis = getMinimalDistanceBetweenTriplets(c1, c);
+		double dis = 0;//getMinimalDistanceBetweenTriplets(c1, c);
 		if ( dis<= threshold) {
 			similars.push_back(c1);
 		}
@@ -176,7 +177,8 @@ bool match(Cluster * a, Cluster * b) {
 
 
 
-pair<double, unordered_set<Cluster *>> buildClusters(Mat img,  double vectorDirectionThreshold,double distance =-1) {
+pair<double, unordered_set<Cluster *>> buildClusters(Mat img,  double vectorDirectionThreshold,double distance) {
+	cout << vectorDirectionThreshold << endl;
 	Ptr<Feature2D> sft = xfeatures2d::SIFT::create();
 	vector<KeyPoint> keypoints;
 	Mat descriptors;
@@ -186,7 +188,8 @@ pair<double, unordered_set<Cluster *>> buildClusters(Mat img,  double vectorDire
 	unordered_set<Cluster *> joinedClusters;
 	initClusters(keypoints, descriptors, initialClusters);
 	calculateTrigularityList(initialClusters,img.size());
-	double maxDis=joinClustersFixedPoint(initialClusters,distance, vectorDirectionThreshold);
+	double maxDis;
+	maxDis=joinClustersFixedPoint(initialClusters,distance, vectorDirectionThreshold);
 	return make_pair(maxDis, initialClusters);
 
 }
@@ -194,10 +197,13 @@ pair<double, unordered_set<Cluster *>> buildClusters(Mat img,  double vectorDire
 
 
 
-double joinClustersFixedPoint(unordered_set<Cluster *>& clusters, double vectorDirectionThreshold,double optionalDistance = -1) {
+double joinClustersFixedPoint(unordered_set<Cluster *>& clusters, double vectorDirectionThreshold,double optionalDistance) {
 
 	double maxDistance = -1;
 	int previousCulstersSize = INFINT;
+
+	maxDistance=max(maxDistance, joinClusters(clusters, vectorDirectionThreshold));
+
 	while (clusters.size() < previousCulstersSize)
 	{
 		previousCulstersSize = clusters.size();
@@ -209,7 +215,7 @@ double joinClustersFixedPoint(unordered_set<Cluster *>& clusters, double vectorD
 }
 
 
-double joinClusters(unordered_set<Cluster *>& clusters, double vectorDirectionThreshold, double optionalDistance = -1) {
+double joinClusters(unordered_set<Cluster *>& clusters, double vectorDirectionThreshold, double optionalDistance) {
 
 
 	unordered_set<Cluster *> handled;
@@ -228,6 +234,7 @@ double joinClusters(unordered_set<Cluster *>& clusters, double vectorDirectionTh
 			toRemove.insert(n);
 
 		}
+	}
 		for each (Cluster *c in toRemove)
 		{
 			clusters.erase(c);
@@ -238,7 +245,7 @@ double joinClusters(unordered_set<Cluster *>& clusters, double vectorDirectionTh
 
 
 
-	}
+	
 }
 
 
@@ -248,45 +255,48 @@ double joinClusters(unordered_set<Cluster *>& clusters, double vectorDirectionTh
 
 
 pair<double,double> calculateDirection(Vec<uchar, 128> v) {
-	Mat dirSum(1,8,CV_64F);
+	
+	Vec<double,8> dirSum;
 	int entry;
 	for (int i = 0; i <128; i++) {
 		entry = i % 8;
-		dirSum.at<double>(0,entry) += v[i];
+		uchar val = v[i];
+		dirSum[entry] += val;
 	}
-	//int max = 0;
-	//for (int i = 1; i < 8; i++) {
-	//	dirSum[i] = dirSum[i] / 16;
-	//} 
-	dirSum/16;
+	int max = 0;
+	for (int i = 1; i < 8; i++) {
+		dirSum[i] = dirSum[i] / 16.0;
+	} 
+	Matx<double, 1, 8> m;
+	transpose(dirSum, m);
+	
 
 
-	Mat angles = Mat(1, 8, CV_64F, &dirs);
-	Mat xs(1,8,CV_64F);
-	Mat ys(1,8,CV_64F);
-	polarToCart(dirSum,angles,xs,ys,true);
-	Mat avgX(1,1,CV_64F);
-	Mat avgY(1,1,CV_64F);
-	Mat finalMag(1,1,CV_64F);
-	Mat finalAngle(1,1,CV_64F);
+	
+	Vec<double, 8> anglesv;
+	for (int i = 0; i < 8; i++) {
+		anglesv[i] = 45 * i;
+	}
+	Matx<double, 1, 8> angles;
+	transpose(anglesv, angles);
+	Matx<double, 1, 8> xs;
+	Matx<double, 1, 8> ys;
+	polarToCart(m,angles,xs,ys,true);
+	Matx<double, 1, 1> avgX;
+	Matx<double, 1, 1> avgY;
+	Matx<double, 1, 1> finalMag;
+	Matx<double, 1, 1> finalAngle;
 	reduce(xs,avgX,1,CV_REDUCE_AVG);
 	reduce(ys,avgY,1,CV_REDUCE_AVG);
 	cartToPolar(avgX,avgY,finalMag,finalAngle,true);
-
-	return make_pair<double,double>(finalMag.at<double>(0,0),finalAngle.at<double>(0,0));
+	double d = finalAngle(0, 0);
+	double l = finalMag(0, 0);
+	pair<double, double> p = make_pair(l,d);
+	return p;
 
 }
 
-double cosine_similarity(double *A, double *B, unsigned int Vector_Length)
-{
-	double dot = 0.0, denom_a = 0.0, denom_b = 0.0;
-	for (unsigned int i = 0u; i < Vector_Length; ++i) {
-		dot += A[i] * B[i];
-		denom_a += A[i] * A[i];
-		denom_b += B[i] * B[i];
-	}
-	return dot / (sqrt(denom_a) * sqrt(denom_b));
-}
+
 
 
 double euclideanDist(Point2f& p, Point2f& q) {
@@ -306,7 +316,7 @@ void initClusters(vector<KeyPoint> keypoints, Mat descriptors, unordered_set<Clu
 
 }
 
-bool mergable(Cluster * a, Cluster * b, double vectorDirectionThreshold, double optionalDistance =-1)
+bool mergable(Cluster * a, Cluster * b, double vectorDirectionThreshold, double optionalDistance)
 {
 	if (optionalDistance > 0&& euclideanDist(a->getClusterCenterPoint(), b->getClusterCenterPoint())> optionalDistance) {
 		return false;
@@ -314,8 +324,9 @@ bool mergable(Cluster * a, Cluster * b, double vectorDirectionThreshold, double 
 	//TODO: some calculation regarding the direction vectors
 	pair<double,double> p1=calculateDirection(a->getClusterCenterDescriptor());
 	pair<double, double> p2 = calculateDirection(b->getClusterCenterDescriptor());
-
-	return false;
+	double angle = 180 - abs(abs(p1.second - p2.second) - 180);
+	cout << angle << endl;
+	return  abs(angle)< vectorDirectionThreshold;
 }
 
 
@@ -394,8 +405,3 @@ double compare(Vec<uchar,128> a, Vec<uchar,128> b) {
 	sum = exp(sum);
 	return sum;
 }
-
-
-
-
-

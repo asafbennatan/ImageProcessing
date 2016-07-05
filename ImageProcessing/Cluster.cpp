@@ -67,7 +67,7 @@ void Cluster::mergeClusters(Cluster * other)
 	}
 
 	//merge neighbours excluding this
-	for each (Cluster *n in other->getNeighbours)
+	for each (Cluster *n in other->getNeighbours())
 	{
 		if (n != this) {
 			addNeighbour(n);
@@ -115,7 +115,7 @@ void Cluster::addToClusterAndCalc(KeyPoint key,Mat descriptor){
 
 unordered_set<Cluster*> Cluster::getNeighbours()
 {
-	return unordered_set<Cluster*>();
+	return neighbours;
 }
 
 void Cluster::printClusterData()
