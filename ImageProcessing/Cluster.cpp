@@ -71,10 +71,11 @@ void Cluster::mergeClusters(Cluster * other)
 	{
 		if (n != this) {
 			addNeighbour(n);
+			//update neighbour to point to us and not to other
+			n->removeNeighbour(other);
+			n->addNeighbour(this);
 		}
-		//update neighbour to point to us and not to other
-		n->removeNeighbour(other);
-		n->addNeighbour(this);
+	
 	}
 	//if other was our neighbour erase it from the neighbours set
 	removeNeighbour(other);
