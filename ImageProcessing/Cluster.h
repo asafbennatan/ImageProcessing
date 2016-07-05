@@ -24,6 +24,7 @@ public:
 	void calculateCenter();
 	void mergeClusters(Cluster *other);
 	void addNeighbour(Cluster *n1);
+	void removeNeighbour(Cluster *other);
 	unordered_set<Cluster *> getNeighbours();
 	void printClusterData();
 

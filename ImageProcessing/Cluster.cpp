@@ -72,9 +72,12 @@ void Cluster::mergeClusters(Cluster * other)
 		if (n != this) {
 			addNeighbour(n);
 		}
+		//update neighbour to point to us and not to other
+		n->removeNeighbour(other);
+		n->addNeighbour(this);
 	}
 	//if other was our neighbour erase it from the neighbours set
-	getNeighbours().erase(other);
+	removeNeighbour(other);
 	calculateCenter();
 	//cout << "after mergeClusters" << endl;
 	printClusterData();
@@ -83,6 +86,11 @@ void Cluster::mergeClusters(Cluster * other)
 void Cluster::addNeighbour(Cluster * n1)
 {
 	neighbours.insert(n1);
+}
+
+void Cluster::removeNeighbour(Cluster * other)
+{
+	neighbours.erase(other);
 }
 
 
