@@ -95,17 +95,6 @@ void Cluster::removeNeighbour(Cluster * other)
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
 void Cluster::addToClusterAndCalc(KeyPoint key,Mat descriptor){
 	addToCluster(key,descriptor);
 	calculateCenter();
