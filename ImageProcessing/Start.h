@@ -30,7 +30,8 @@ void setClusterNeighboursByTriangles (vector<Vec6f>& trianglesList, unordered_se
 
 Cluster *findCluster(Point2f p, unordered_set<Cluster*> clusters);
 bool compareFloats(float a, float b);
-
+vector<vector<int>> nChooseKPermutations(vector<int> arr, int k);
+void nChooseKPermutationsRec(int offset, int k, vector<int> arr, vector<vector<int>> &combs, vector<int> &current);
 double joinClusters(unordered_set<Cluster *>& clusters, double vectorDirectionThreshold, Size imgSize,Mat img, double optionalDistance = -1);
 //double joinClusters(unordered_set<Cluster *>& clusters, double vectorDirectionThreshold, double optionalDistance = -1);
 void findSimilars(unordered_set<Cluster *>, Cluster * c, unordered_set<Cluster *>& similars, double threshold);

@@ -12,7 +12,7 @@ using namespace cv;
 #define INFINT numeric_limits<double>::infinity()
 #define EPSILON 0.0000000000000000000001f
 #define DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD 15.0//d
-#define DISTANCE_BETWEEN_CLUSTERS_THRESHOLD 1
+#define DISTANCE_BETWEEN_CLUSTERS_THRESHOLD 15000
 int const comb[6][3] = { { 0,1,2 },{ 0,2,1 },{ 1,2,0 },{ 1,0,2 },{ 2,1,0 },{ 2,0,1 } };
 double dirs[1][8] = { {0,45,90,135,180,225,270,315} };
 
@@ -20,8 +20,12 @@ double dirs[1][8] = { {0,45,90,135,180,225,270,315} };
 
 
 int main(int argc, char** argv) {
+	static const int arr[] = { 1,2,3,4,5,6,7,8,9 };
+	vector<int> vec(arr, arr + sizeof(arr) / sizeof(arr[0]));
 
+	
 
+	
 	Mat page = imread("C:\\Users\\Asaf\\Desktop\\page.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 	Mat word = imread("C:\\Users\\Asaf\\Desktop\\query.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 	double inf = std::numeric_limits<double>::infinity();
@@ -41,7 +45,7 @@ int main(int argc, char** argv) {
 	vector<Cluster *> queryClustersVector;
 	std::copy(wordClusters.begin(), wordClusters.end(), std::back_inserter(queryClustersVector));
 	vector<vector<Cluster*>> matched=match(pageClustersVector, queryClustersVector,DISTANCE_BETWEEN_CLUSTERS_THRESHOLD);
-	
+	cout << "number of returned groups: " << matched.size() << endl;
 	for each (vector<Cluster*> clusters in matched)
 	{
 
@@ -69,7 +73,7 @@ int main(int argc, char** argv) {
 		cv::rectangle(
 			page,
 			min,max,
-			cv::Scalar(255, 255, 255)
+			cv::Scalar(0, 255, 255)
 		);
 	}
 	
@@ -197,25 +201,36 @@ vector<Cluster*> indexArrayToClusterArray(vector<int> indexArray, vector<Cluster
 	return toRet;
 }
 
+vector<vector<int>> nChooseKPermutations(vector<int> arr, int k) {
+	vector<vector<int>> combs;
+	vector<int> vec;
+	nChooseKPermutationsRec(0, k,arr,combs,vec);
+	return combs;
+}
+
+
+void nChooseKPermutationsRec(int offset, int k, vector<int> arr,vector<vector<int>> &combs,vector<int> &current) {
+	if (k == 0) {
+		vector<int> newVec(current);
+		combs.push_back(newVec);
+		return;
+	}
+	for (int i = offset; i <= arr.size() - k; ++i) {
+		current.push_back(arr[i]);
+		nChooseKPermutationsRec(i + 1, k - 1,arr,combs,current);
+		current.pop_back();
+	}
+}
+
+
+
 vector<vector<Cluster*> > permGenerator(vector<Cluster *> clusters,int k)
 {
-	vector<int> indexArray=generateIndexArray(clusters);
-	sort(indexArray.begin(), indexArray.end());
+	vector<int> indexVector = generateIndexArray(clusters);
+	vector<vector<int>> combs = nChooseKPermutations(indexVector, k);
 	vector<vector<Cluster*>> combinations;
-	vector<vector<int>> combinationsInt;
-	do
-	{
-		vector<int> comb;
-		for (int i = 0; i < k; i++)
-		{
-			comb.push_back(indexArray.at(k));
-		}
-		combinationsInt.push_back(comb);
-		std::reverse(indexArray.begin() + k, indexArray.end());
 
-	} while (next_permutation(indexArray.begin(), indexArray.end()));
-
-	for each (vector<int> v in combinationsInt)
+	for each (vector<int> v in combs)
 	{
 		combinations.push_back(indexArrayToClusterArray(v, clusters));
 	}
@@ -228,13 +243,19 @@ vector<vector<Cluster*>> match(vector<Cluster*> page,vector<Cluster*> query,doub
 	vector<vector<Cluster*>> meetsRequierments;
 	vector<vector<Cluster*>> perms=permGenerator(page, query.size());
 	cout << "perm size: " << perms.size() << endl;
+	double minD = INF;
 	for each (vector<Cluster*> p in perms)
 	{
 		double dist=calculateMinDistanceBetweenKClusters(p, query);
 		if (dist <= clustersDistanceTreshold) {
 			meetsRequierments.push_back(p);
 		}
+		if (dist < minD) {
+			minD = dist;
+		}
 	}
+	cout << "min dist is:" << minD << endl;
+
 	return meetsRequierments;
 }
 
