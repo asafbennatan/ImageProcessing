@@ -9,10 +9,12 @@
 #include <set>
 #include <iterator>
 
-
+#include "boost/graph/vf2_sub_graph_iso.hpp"
 #include <unordered_set>
 using namespace std;
 using namespace cv;
+typedef boost::adjacency_list<boost::setS, boost::vecS, boost::bidirectionalS> graph_type;
+
 
 vector<double> getIdentificationVector(Mat image, int gridWidth, int gridHeight);
 Vec<double, 128> calculateGrid(Mat cell);
@@ -38,5 +40,36 @@ void findSimilars(unordered_set<Cluster *>, Cluster * c, unordered_set<Cluster *
 double calculateDistanceBetweenKClusters(vector<Cluster *>page, vector<Cluster*> query);
 double calculateMinDistanceBetweenKClusters(vector<Cluster *>page, vector<Cluster*> query);
 vector<vector<Cluster*> > permGenerator(vector<Cluster *> clusters, int k);
-vector<vector<Cluster*>> match(vector<Cluster*> page,vector<Cluster*> query,double treshold);
+vector<vector<Cluster*>> match(vector<Cluster*> page,vector<Cluster*> query,double treshold,double minDist);
+double calculateClusterMaxDistance(vector<Cluster*> clusters);
 void findMinDistTriangle(pair<Point2f[3],Point2f[3]>& mtch, Point2f wordPts [3],vector<Vec6f>& TrianglesList,Size imgSize);
+template <class T>
+inline void hash_combine(std::size_t & seed, const T & v)
+{
+	std::hash<T> hasher;
+	seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+struct pair_hash {
+	std::size_t operator () (const std::pair<float, float> &p) const {
+		size_t h = std::hash<float>{}(p.first);
+		hash_combine(h, p.second);
+
+		// Mainly for demonstration purposes, i.e. works but is overly simple
+		// In the real world, use sth. like boost.hash_combine
+		return h;
+	}
+};
+struct pair_eq {
+	bool operator()(const pair<float, float> t1,const  pair<float, float> t2) const
+	{
+
+		return compareFloats(t1.first, t2.first) && compareFloats(t1.second, t2.second);
+	}
+};
+
+
+void getSubIsomorphicGraphs(vector<Vec6f>& queryT, vector<Vec6f>& pageT, int queryVertexSize, int pageVertexSize);
+void test(graph_type a, graph_type b);
+graph_type createGraph(vector<Vec6f>& tList, int numberOfvertex);
+int getVertexNumber(boost::unordered_map<pair<float, float>, int, pair_hash, pair_eq> & map, float x, float y, int & counter);

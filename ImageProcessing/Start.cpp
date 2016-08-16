@@ -12,9 +12,10 @@ using namespace cv;
 #define INFINT numeric_limits<double>::infinity()
 #define EPSILON 0.0000000000000000000001f
 #define DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD 15.0//d
-#define DISTANCE_BETWEEN_CLUSTERS_THRESHOLD 15000
+#define DISTANCE_BETWEEN_CLUSTERS_THRESHOLD 25000
 int const comb[6][3] = { { 0,1,2 },{ 0,2,1 },{ 1,2,0 },{ 1,0,2 },{ 2,1,0 },{ 2,0,1 } };
 double dirs[1][8] = { {0,45,90,135,180,225,270,315} };
+
 
 
 
@@ -23,67 +24,131 @@ int main(int argc, char** argv) {
 	static const int arr[] = { 1,2,3,4,5,6,7,8,9 };
 	vector<int> vec(arr, arr + sizeof(arr) / sizeof(arr[0]));
 
-	
 
-	
+
+
 	Mat page = imread("C:\\Users\\Asaf\\Desktop\\page.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 	Mat word = imread("C:\\Users\\Asaf\\Desktop\\query.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 	double inf = std::numeric_limits<double>::infinity();
 
-	pair<double,unordered_set<Cluster *> > p = buildClusters(word,DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD);
+	pair<double, unordered_set<Cluster *> > p = buildClusters(word, DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD);
 	unordered_set<Cluster *> wordClusters = p.second;
-	p= buildClusters(page, min(p.first,20.0));
+	p = buildClusters(page, 20.0);
 	unordered_set<Cluster *> pageClusters = p.second;
-
+	
 
 	vector<Vec6f> wordTrianglesList;
-	calcTriangularityList (wordTrianglesList,wordClusters, word.size());
+	calcTriangularityList(wordTrianglesList, wordClusters, word.size());
 	vector<Vec6f> pageTrianglesList;
-	calcTriangularityList (wordTrianglesList, pageClusters, page.size());
+	calcTriangularityList(pageTrianglesList, pageClusters, page.size());
 	vector<Cluster *> pageClustersVector;
 	std::copy(pageClusters.begin(), pageClusters.end(), std::back_inserter(pageClustersVector));
 	vector<Cluster *> queryClustersVector;
 	std::copy(wordClusters.begin(), wordClusters.end(), std::back_inserter(queryClustersVector));
-	vector<vector<Cluster*>> matched=match(pageClustersVector, queryClustersVector,DISTANCE_BETWEEN_CLUSTERS_THRESHOLD);
+	getSubIsomorphicGraphs(wordTrianglesList, pageTrianglesList, queryClustersVector.size(), pageClustersVector.size());
+	double maxQueryDis = calculateClusterMaxDistance(queryClustersVector);
+	vector<vector<Cluster*>> matched = match(pageClustersVector, queryClustersVector, DISTANCE_BETWEEN_CLUSTERS_THRESHOLD, maxQueryDis);
 	cout << "number of returned groups: " << matched.size() << endl;
 	for each (vector<Cluster*> clusters in matched)
 	{
 
 		Point2d max(-INFINT, -INFINT);
 		Point2d min(INF, INF);
+		vector<KeyPoint> points;
+
 		for each (Cluster* c in clusters)
 		{
-			
+
+
 			for each (KeyPoint point in c->getClusterKeyPoints())
 			{
-				if (point.pt.x > max.x) {
-					max.x = point.pt.x;
-				}
-				if (point.pt.y > max.y) {
-					max.y = point.pt.y;
-				}
-				if (point.pt.x< min.x) {
-					min.x = point.pt.x;
-				}
-				if (point.pt.y < min.y) {
-					min.y = point.pt.y;
-				}
+				points.push_back(point);
+				//	if (point.pt.x > max.x) {
+				///		max.x = point.pt.x;
+				//	}
+				//	if (point.pt.y > max.y) {
+				//		max.y = point.pt.y;
+				//	}
+				//	if (point.pt.x< min.x) {
+				//		min.x = point.pt.x;
+				//	}
+				//	if (point.pt.y < min.y) {
+				//		min.y = point.pt.y;
+				//	}
 			}
+
 		}
-		cv::rectangle(
+		/*cv::rectangle(
 			page,
 			min,max,
 			cv::Scalar(0, 255, 255)
-		);
+		);*/
+
+		Mat out;
+		drawKeypoints(page, points,out, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+		cv::imshow("page", out);
+		waitKey();
+
+
+
+
+	}
+}
+
+
+
+void getSubIsomorphicGraphs(vector<Vec6f>& queryT, vector<Vec6f>& pageT,int queryVertexSize,int pageVertexSize) {
+	graph_type queryG=createGraph(queryT, queryVertexSize);
+	graph_type pageG = createGraph(pageT, pageVertexSize);
+	boost::vf2_print_callback<graph_type, graph_type> callback(queryG, pageG);
+	boost::vf2_subgraph_iso(queryG, pageG, callback);
+	
+}
+
+//void test(graph_type a, graph_type b) {
+//	BGL_FORALL_VERTICES_T(v, a, graph_type) {
+//		int index=boost::get(boost::vertex_index_t(), a, v);
+//	}
+//	
+//
+//}
+
+
+
+graph_type createGraph(vector<Vec6f>& tList,int numberOfvertex) {
+	graph_type graph(numberOfvertex);
+	boost::unordered_map<pair<float,float>, int,pair_hash, pair_eq> map;
+
+	int counter = 0;
+	for each (Vec6f t in tList)
+	{
+		int one=getVertexNumber(map, t[0], t[1], counter);
+		int two = getVertexNumber(map, t[2], t[3], counter);
+		int three = getVertexNumber(map, t[4], t[5], counter);
+
+		boost::add_edge(one,two,graph);
+		boost::add_edge(one, three, graph);
+		boost::add_edge(two, three, graph);
+	}
+	return graph;
+}
+
+
+
+int getVertexNumber(boost::unordered_map<pair<float, float>, int,pair_hash, pair_eq> & map ,float x,float y, int & counter) {
+	pair<float, float> p = make_pair(x, y);
+	boost::unordered_map<pair<float, float>, int,pair_hash, pair_eq>::const_iterator looked = map.find(p);
+	int val = -1;
+	if (looked == map.end()) {
+		val = counter;
+		map.insert(make_pair(p, val));
+		counter++;
+	}
+	else {
+		val = looked->second;
 	}
 	
-	
-	cv::imshow("page", page);
-	waitKey();
-	
-
-
-
+return	val;
 }
 
 void calcTriangularityList (vector<Vec6f>& trianglesList, unordered_set<Cluster *>& clusters, Size imgSize)
@@ -237,7 +302,7 @@ vector<vector<Cluster*> > permGenerator(vector<Cluster *> clusters,int k)
 	return combinations;
 }
 
-vector<vector<Cluster*>> match(vector<Cluster*> page,vector<Cluster*> query,double clustersDistanceTreshold) {
+vector<vector<Cluster*>> match(vector<Cluster*> page,vector<Cluster*> query,double clustersDistanceTreshold,double maxQueryDist) {
 	double dist = -INFINT;
 	bool validPoint=true;
 	vector<vector<Cluster*>> meetsRequierments;
@@ -246,13 +311,17 @@ vector<vector<Cluster*>> match(vector<Cluster*> page,vector<Cluster*> query,doub
 	double minD = INF;
 	for each (vector<Cluster*> p in perms)
 	{
-		double dist=calculateMinDistanceBetweenKClusters(p, query);
-		if (dist <= clustersDistanceTreshold) {
-			meetsRequierments.push_back(p);
+		double d = calculateClusterMaxDistance(p);
+		if (d <= maxQueryDist) {
+			double dist = calculateMinDistanceBetweenKClusters(p, query);
+			if (dist <= clustersDistanceTreshold) {
+				meetsRequierments.push_back(p);
+			}
+			if (dist < minD) {
+				minD = dist;
+			}
 		}
-		if (dist < minD) {
-			minD = dist;
-		}
+		
 	}
 	cout << "min dist is:" << minD << endl;
 
@@ -272,6 +341,20 @@ double calculateMinDistanceBetweenKClusters(vector<Cluster *>page,vector<Cluster
 	} while (next_permutation(page.begin(), page.end()));
 	return min;
 
+}
+
+double calculateClusterMaxDistance(vector<Cluster*> clusters) {
+	double max = -INF;
+	for each (Cluster * c1 in clusters)
+	{
+		for each (Cluster * c2 in clusters) {
+			if (c1 != c2) {
+				double d=euclideanDist(c1->getClusterCenterPoint(), c2->getClusterCenterPoint());
+				max=MAX(d, max);
+			}
+		}
+	}
+	return max;
 }
 
 double calculateDistanceBetweenKClusters(vector<Cluster *>page, vector<Cluster*> query) {
@@ -373,8 +456,15 @@ double joinClusters(unordered_set<Cluster *>& clusters, double vectorDirectionTh
 	//unordered_set<Cluster *> handled;
 	unordered_set<Cluster *> toRemove;
 	double maxDistance = -1;
+	unordered_set<int> visited;
 	for ( auto it = clusters.begin(); it != clusters.end(); ++it ){
+		
     	Cluster* c = *it;
+		int val = (int)c;
+		if (visited.find(val) != visited.end()) {
+			cout << "visted called" << endl;
+			continue;
+		}
 		unordered_set<Cluster *> neighbours = c->getNeighbours();
 		//handled.insert(c);
 		for each(Cluster * n in neighbours) {
@@ -385,19 +475,19 @@ double joinClusters(unordered_set<Cluster *>& clusters, double vectorDirectionTh
 			maxDistance = max(dist, maxDistance);
 			c->mergeClusters(n);
 			toRemove.insert(n);
-
+			visited.insert((int)n);
 		}
-	
-		for each (Cluster *c in toRemove)
-		{
-			clusters.erase(c);
-		}
+		
 
 		//calculateTrigularityList(clusters,  imgSize);
-		vector<Vec6f> trianglesList;
-		calcTriangularityList (trianglesList,clusters, img.size());
-		setClusterNeighboursByTriangles (trianglesList,clusters, img.size());
+		//vector<Vec6f> trianglesList;
+		//calcTriangularityList (trianglesList,clusters, img.size());
+		//setClusterNeighboursByTriangles (trianglesList,clusters, img.size());
 
+	}
+	for each (Cluster *c in toRemove)
+	{
+		clusters.erase(c);
 	}
 		return maxDistance;
 }
