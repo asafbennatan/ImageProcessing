@@ -80,6 +80,7 @@ void Cluster::mergeClusters(Cluster * other)
 	//if other was our neighbour erase it from the neighbours set
 	removeNeighbour(other);
 	calculateCenter();
+	
 	//cout << "after mergeClusters" << endl;
 	printClusterData();
 }

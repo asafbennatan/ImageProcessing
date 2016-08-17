@@ -42,6 +42,7 @@ double calculateMinDistanceBetweenKClusters(vector<Cluster *>page, vector<Cluste
 vector<vector<Cluster*> > permGenerator(vector<Cluster *> clusters, int k);
 vector<vector<Cluster*>> match(vector<Cluster*> page,vector<Cluster*> query,double treshold,double minDist);
 double calculateClusterMaxDistance(vector<Cluster*> clusters);
+double calculateClusterMaxNeighborDistance(unordered_set<Cluster * > clusters);
 void findMinDistTriangle(pair<Point2f[3],Point2f[3]>& mtch, Point2f wordPts [3],vector<Vec6f>& TrianglesList,Size imgSize);
 template <class T>
 inline void hash_combine(std::size_t & seed, const T & v)

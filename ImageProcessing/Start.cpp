@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
 	pair<double, unordered_set<Cluster *> > p = buildClusters(word, DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD);
 	unordered_set<Cluster *> wordClusters = p.second;
-	p = buildClusters(page, 20.0);
+	p = buildClusters(page, DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD,p.first);
 	unordered_set<Cluster *> pageClusters = p.second;
 	
 
@@ -155,13 +155,16 @@ void calcTriangularityList (vector<Vec6f>& trianglesList, unordered_set<Cluster 
 {
 	Rect rect(0, 0, imgSize.width, imgSize.height);
 	Subdiv2D subdiv(rect);
-	
+
 	for each (Cluster * p in clusters)
 	{
 		subdiv.insert(p->getClusterCenterPoint());
 	}
 	
 	subdiv.getTriangleList(trianglesList);
+	
+		
+	
 }
 
 void setClusterNeighboursByTriangles (vector<Vec6f>& trianglesList, unordered_set<Cluster *>& clusters, Size imgSize)
@@ -343,6 +346,20 @@ double calculateMinDistanceBetweenKClusters(vector<Cluster *>page,vector<Cluster
 
 }
 
+double calculateClusterMaxNeighborDistance(unordered_set<Cluster * > clusters) {
+	double max = -INF;
+	for each (Cluster * c1 in clusters)
+	{
+		for each (Cluster * c2 in c1->getNeighbours()) {
+			if (c1 != c2) {
+				double d = euclideanDist(c1->getClusterCenterPoint(), c2->getClusterCenterPoint());
+				max = MAX(d, max);
+			}
+		}
+	}
+	return max;
+}
+
 double calculateClusterMaxDistance(vector<Cluster*> clusters) {
 	double max = -INF;
 	for each (Cluster * c1 in clusters)
@@ -415,6 +432,10 @@ double joinClustersFixedPoint(unordered_set<Cluster *>& clusters, double vectorD
 		maxDistance=max(maxDistance, joinClusters(clusters, vectorDirectionThreshold,imgSize,img));
 		cout << "prev: " << previousCulstersSize  << " curr: " << clusters.size() << endl;
 	}
+	
+	maxDistance = calculateClusterMaxNeighborDistance(clusters);
+
+	
 
 	return maxDistance;
 
