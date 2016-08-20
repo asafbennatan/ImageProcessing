@@ -2,6 +2,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 
 
+
 using namespace std;
 using namespace cv;
 
@@ -11,29 +12,77 @@ using namespace cv;
 #define INF numeric_limits<double>::infinity()
 #define INFINT numeric_limits<double>::infinity()
 #define EPSILON 0.0000000000000000000001f
-#define DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD 15.0//d
-#define DISTANCE_BETWEEN_CLUSTERS_THRESHOLD 25000
+
 int const comb[6][3] = { { 0,1,2 },{ 0,2,1 },{ 1,2,0 },{ 1,0,2 },{ 2,1,0 },{ 2,0,1 } };
 double dirs[1][8] = { {0,45,90,135,180,225,270,315} };
-
-
-
-
-
+namespace fs = boost::filesystem;
 int main(int argc, char** argv) {
+	if (argc < 3) {
+		cout << "usage: app <pathToFolder>" << endl;
+		return 1;
+	}
+	
+	fs::path baseDir(argv[1]);
+	string out = argv[2];
+	fs::directory_iterator end_iter;
+	vector<fs::path> pages;
+	vector<fs::path> queries;
+	string pageStarts("page");
+	string queryStarts("query");
+	string suffix(".jpg");
+
+	if (fs::exists(baseDir) && fs::is_directory(baseDir))
+	{
+		for (fs::directory_iterator dir_iter(baseDir); dir_iter != end_iter; ++dir_iter)
+		{
+			if (fs::is_regular_file(dir_iter->status()))
+			{
+				fs::path p = dir_iter->path();
+				string name = p.filename().string();
+				if (boost::algorithm::starts_with(name, queryStarts) && boost::algorithm::ends_with(name,suffix)) {
+					queries.push_back(p);
+
+				}
+
+				if (boost::algorithm::starts_with(name, pageStarts)&& boost::algorithm::ends_with(name, suffix)) {
+					pages.push_back(p);
+
+				}
+			}
+		}
+		
+		for each (fs::path pagePath in pages)
+		{
+			for each(fs::path queryPath in queries) {
+			
+				string outPath = out +pagePath.stem().string() + "_" + queryPath.stem().string() + ".jpg";
+				Mat out=runAlgorithem(pagePath.string(), queryPath.string());
+				cv::imwrite(outPath, out);
+			}
+		}
+	}
+	else {
+		cout << "invalid path" << endl;
+	}
+
+
+}
+
+
+Mat runAlgorithem(string pagePath, string queryPath,double distance_between_direction_vectors_thresold , double distance_between_clusters_threshold) {
 	static const int arr[] = { 1,2,3,4,5,6,7,8,9 };
 	vector<int> vec(arr, arr + sizeof(arr) / sizeof(arr[0]));
 
 
 
 
-	Mat page = imread("C:\\Users\\Asaf\\Desktop\\page.jpg", CV_LOAD_IMAGE_GRAYSCALE);
-	Mat word = imread("C:\\Users\\Asaf\\Desktop\\query.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+	Mat page = imread(pagePath, CV_LOAD_IMAGE_GRAYSCALE);
+	Mat word = imread(queryPath, CV_LOAD_IMAGE_GRAYSCALE);
 	double inf = std::numeric_limits<double>::infinity();
 
-	pair<double, unordered_set<Cluster *> > p = buildClusters(word, DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD);
+	pair<double, unordered_set<Cluster *> > p = buildClusters(word, distance_between_direction_vectors_thresold);
 	unordered_set<Cluster *> wordClusters = p.second;
-	p = buildClusters(page, DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD,p.first);
+	p = buildClusters(page, distance_between_direction_vectors_thresold,p.first);
 	unordered_set<Cluster *> pageClusters = p.second;
 	
 
@@ -47,7 +96,7 @@ int main(int argc, char** argv) {
 	std::copy(wordClusters.begin(), wordClusters.end(), std::back_inserter(queryClustersVector));
 	getSubIsomorphicGraphs(wordTrianglesList, pageTrianglesList, queryClustersVector.size(), pageClustersVector.size());
 	double maxQueryDis = calculateClusterMaxDistance(queryClustersVector);
-	vector<vector<Cluster*>> matched = match(pageClustersVector, queryClustersVector, DISTANCE_BETWEEN_CLUSTERS_THRESHOLD, maxQueryDis);
+	vector<vector<Cluster*>> matched = match(pageClustersVector, queryClustersVector, distance_between_clusters_threshold, maxQueryDis);
 	cout << "number of returned groups: " << matched.size() << endl;
 	for each (vector<Cluster*> clusters in matched)
 	{
@@ -86,8 +135,7 @@ int main(int argc, char** argv) {
 
 		Mat out;
 		drawKeypoints(page, points,out, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-		cv::imshow("page", out);
-		waitKey();
+		return out;
 
 
 
@@ -290,7 +338,30 @@ void nChooseKPermutationsRec(int offset, int k, vector<int> arr,vector<vector<in
 	}
 }
 
+Cluster * findBestCluster(Cluster * c,vector<Cluster*> clusters, unordered_set<int> ignore ,double clustersDistanceTreshold, double maxQueryDist) {
+	double minD = INF;
+	Cluster * toRet=NULL;
 
+	for each (Cluster* p in clusters)
+	{
+		if (p != c && ignore.find((int)p)==ignore.end()) {
+			double d = euclideanDist(c->getClusterCenterPoint(), p->getClusterCenterPoint());
+			if (d <= maxQueryDist) {
+				double dist = compareHist(c->getClusterCenterDescriptor(), p->getClusterCenterDescriptor(), CV_COMP_CHISQR);
+				if (dist <= clustersDistanceTreshold) {
+				
+				if (dist < minD) {
+					minD = dist;
+					toRet = p;
+				}
+				}
+			}
+		}
+		
+
+	}
+	return toRet;
+}
 
 vector<vector<Cluster*> > permGenerator(vector<Cluster *> clusters,int k)
 {
@@ -305,31 +376,49 @@ vector<vector<Cluster*> > permGenerator(vector<Cluster *> clusters,int k)
 	return combinations;
 }
 
-vector<vector<Cluster*>> match(vector<Cluster*> page,vector<Cluster*> query,double clustersDistanceTreshold,double maxQueryDist) {
-	double dist = -INFINT;
-	bool validPoint=true;
-	vector<vector<Cluster*>> meetsRequierments;
-	vector<vector<Cluster*>> perms=permGenerator(page, query.size());
-	cout << "perm size: " << perms.size() << endl;
-	double minD = INF;
-	for each (vector<Cluster*> p in perms)
+vector<vector<Cluster*>> match(vector<Cluster*> page, vector<Cluster*> query, double clustersDistanceTreshold, double maxQueryDist) {
+	unordered_set<int> ignore;
+	vector<Cluster *> best;
+	vector< vector<Cluster*> > container;
+	for each (Cluster * qC in query)
 	{
-		double d = calculateClusterMaxDistance(p);
-		if (d <= maxQueryDist) {
-			double dist = calculateMinDistanceBetweenKClusters(p, query);
-			if (dist <= clustersDistanceTreshold) {
-				meetsRequierments.push_back(p);
-			}
-			if (dist < minD) {
-				minD = dist;
-			}
+		
+		Cluster * found=findBestCluster(qC, page, ignore, clustersDistanceTreshold, maxQueryDist);
+		if (found != NULL) {
+			best.push_back(found);
+			ignore.insert((int)found);
 		}
 		
 	}
-	cout << "min dist is:" << minD << endl;
-
-	return meetsRequierments;
+	container.push_back(best);
+	return container;
 }
+
+//vector<vector<Cluster*>> match(vector<Cluster*> page,vector<Cluster*> query,double clustersDistanceTreshold,double maxQueryDist) {
+//	double dist = -INFINT;
+//	bool validPoint=true;
+//	vector<vector<Cluster*>> meetsRequierments;
+//	vector<vector<Cluster*>> perms=permGenerator(page, query.size());
+//	cout << "perm size: " << perms.size() << endl;
+//	double minD = INF;
+//	for each (vector<Cluster*> p in perms)
+//	{
+//		double d = calculateClusterMaxDistance(p);
+//		if (d <= maxQueryDist) {
+//			double dist = calculateMinDistanceBetweenKClusters(p, query);
+//			if (dist <= clustersDistanceTreshold) {
+//				meetsRequierments.push_back(p);
+//			}
+//			if (dist < minD) {
+//				minD = dist;
+//			}
+//		}
+//		
+//	}
+//	cout << "min dist is:" << minD << endl;
+//
+//	return meetsRequierments;
+//}
 
 double calculateMinDistanceBetweenKClusters(vector<Cluster *>page,vector<Cluster*> query) {
 	sort(page.begin(), page.end());

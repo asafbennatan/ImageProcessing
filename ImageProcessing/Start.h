@@ -10,7 +10,12 @@
 #include <iterator>
 
 #include "boost/graph/vf2_sub_graph_iso.hpp"
+#include "boost/filesystem.hpp"
+#include <boost/algorithm/string/predicate.hpp>
 #include <unordered_set>
+
+#define DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD 15.0//d
+#define DISTANCE_BETWEEN_CLUSTERS_THRESHOLD 25000
 using namespace std;
 using namespace cv;
 typedef boost::adjacency_list<boost::setS, boost::vecS, boost::bidirectionalS> graph_type;
@@ -74,3 +79,5 @@ void getSubIsomorphicGraphs(vector<Vec6f>& queryT, vector<Vec6f>& pageT, int que
 void test(graph_type a, graph_type b);
 graph_type createGraph(vector<Vec6f>& tList, int numberOfvertex);
 int getVertexNumber(boost::unordered_map<pair<float, float>, int, pair_hash, pair_eq> & map, float x, float y, int & counter);
+Mat runAlgorithem(string pagePath, string queryPath, double distance_between_direction_vectors_thresold = DISTANCE_BETWEEN_DIRECTION_VECTORS_THRESHOLD, double distance_between_clusters_threshold = DISTANCE_BETWEEN_CLUSTERS_THRESHOLD);
+Cluster * findBestCluster(Cluster * c, vector<Cluster*> clusters, unordered_set<int> ignore, double clustersDistanceTreshold, double maxQueryDist);
